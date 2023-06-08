@@ -1,0 +1,75 @@
+微服务是什么？
+微服务是一种软件开发技术。提倡将单一应用程序划分成一组小的服务，服务之间相互协调、相互作用。每组服务都可以独立部署，且正常运行。
+
+服务注册与发现：
+eureka，zookeeper，consul，nacos
+cap模式：ap模式包括eureka和nacos
+cp模式包括zookeeper和consul
+
+1、eureka的自我保护机制默认开启，当eureka服务端接受不到服务的心跳，并不会立马删除服务。可以通过
+server:
+    #关闭eureka自我保护机制
+#    enable-self-preservation: false
+关闭eureka自我保护机制。
+
+使用eureka时，服务端启动类要添加@EnableEurekaServer
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+        </dependency>
+客户端启动类要添加注解@EnableEurekaClient
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+            <version>2.2.1.RELEASE</version>
+        </dependency>
+        
+        
+zookeeper:
+下载zookeeper并安装。服务端不需要用代码搭建，安装完之后启动就可以。默认端口2181
+项目中引入jar包，discovery是服务发现，这个包里面含有一个2.x的zookeeper包，看情况是否需要重新引新包。
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-zookeeper-discovery</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.zookeeper</groupId>
+                    <artifactId>zookeeper</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.zookeeper</groupId>
+            <artifactId>zookeeper</artifactId>
+            <version>3.4.10</version>
+        </dependency>
+yml文件添加配置：
+spring:
+  application:
+    name: cloud-consumer-order
+  cloud:
+    zookeeper:
+      connect-string: 192.168.52.129:2181
+        
+在客户端启动类上添加注解@EnableDiscoveryClient
+
+consul和zookeeper用法一样
+
+
+2、服务调用：ribbon和openfeign
+eureka包中自带ribbon，ribbon+restTemplate实现接口调用。若要restTemplate支持负载均衡，在restTemplate配置类中加上@Loadbalanced。ribbon默认负载均衡方式是轮询，通过访问次数和服务器数量取余，来得到要匹配的服务器。
+可以通过配置类IRule来改变轮询方式，配置类不能与启动类在一个包下。
+openfeign
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+在启动类上添加@EnableFeignClients，写service接口，不需要实现，在接口上添加注解，@FeignClient(value="注册到eureka的服务名称")，接口中的方法，访问路径，和原方法一致。openfeign里面也包含ribbon
+
+3、服务降级、服务熔断。hystrix（断路器）用于处理分布式系统的延迟和容错的开源库。在分布式系统管理里，许多依赖不可避免的会调用失败，比如超时、异常等，Hystrix能够保证在一个以来出现错的情况下不会导致整体服务失败，
+避免级联故障，以提高分布式系统的弹性。 断路器本身是一种开关，当某个服务单元出现故障，通过断路器，向调用方返回一个符合预期的、可处理的备选方案（fallback）。而不是擦昂时间的等待，或跑出不可处理的异常。
+这样就保证了服务调用放的线程不会长时间、不必要的占用，这样就避免了故障在分布式系统中蔓延甚至雪崩。
+
+
+
+
