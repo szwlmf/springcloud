@@ -105,7 +105,58 @@ feign:
             <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
         </dependency>
 启动类上添加@EnableHystrixDashboard
+端口默认9001，实时监控熔断器监控的接口fallback调用情况
+
+4、gateway  服务网关（匹配规则：route,predicate,filter）
+默认端口9527
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+  yml配置
+  spring:
+  application:
+    name: cloud-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true    #开启从注册中心动态创建路由的功能，利用微服务名进行路由
+      routes:
+        - id: payment_routh #payment_routh    路由的id，没有固定规则，但要求唯一
+#          uri: http://localhost:8001          #匹配后提供服务的路由地址
+          uri: lb://CLOUD-PAYMENT-SERVICE          #匹配后提供服务的路由地址
+          predicates:
+            - Path=/payment/get/**         #断言，路径相匹配的进行路由
+
+        - id: payment_routh2 #payment_routh    路由的id，没有固定规则，但要求唯一
+#          uri: http://localhost:8001          #匹配后提供服务的路由地址
+          uri: lb://CLOUD-PAYMENT-SERVICE          #匹配后提供服务的路由地址
+          predicates:
+            - Path=/payment/lb/**         #断言，路径相匹配的进行路由
+
+过滤器：
+@Component
+@Slf4j
+public class MyLogGatewayFilter implements GlobalFilter, Ordered {
+
+
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        log.info("*************come in MyLogGatewayFilter: \n"+new Date());
+        String param = exchange.getRequest().getQueryParams().getFirst("uname");
+        if(param == null){
+            log.info("非法用户");
+            exchange.getResponse().setStatusCode(HttpStatus.NOT_ACCEPTABLE);
+            return exchange.getResponse().setComplete();
+        }
+        return chain.filter(exchange);
+    }
 
 
 
-
+    @Override
+    public int getOrder() {
+        return 0;//数字越小优先级越高
+    }
+}
