@@ -67,8 +67,44 @@ openfeign
 在启动类上添加@EnableFeignClients，写service接口，不需要实现，在接口上添加注解，@FeignClient(value="注册到eureka的服务名称")，接口中的方法，访问路径，和原方法一致。openfeign里面也包含ribbon
 
 3、服务降级、服务熔断。hystrix（断路器）用于处理分布式系统的延迟和容错的开源库。在分布式系统管理里，许多依赖不可避免的会调用失败，比如超时、异常等，Hystrix能够保证在一个以来出现错的情况下不会导致整体服务失败，
-避免级联故障，以提高分布式系统的弹性。 断路器本身是一种开关，当某个服务单元出现故障，通过断路器，向调用方返回一个符合预期的、可处理的备选方案（fallback）。而不是擦昂时间的等待，或跑出不可处理的异常。
-这样就保证了服务调用放的线程不会长时间、不必要的占用，这样就避免了故障在分布式系统中蔓延甚至雪崩。
+避免级联故障，以提高分布式系统的弹性。 断路器本身是一种开关，当某个服务单元出现故障，通过断路器，向调用方返回一个符合预期的、可处理的备选方案（fallback）。而不是长时间的等待，或抛出不可处理的异常。
+这样就保证了服务调用方的线程不会长时间、不必要的占用，这样就避免了故障在分布式系统中蔓延甚至雪崩。
+
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+        </dependency>
+ 在启动类添加注解@EnableHystrix
+在controller类添加//设置出错或者超时时默认调用方法
+@DefaultProperties(defaultFallback = "globaFallback")
+在方法上添加@HystrixCommand，只添加hystrixcommand注解，不添加其他，当调用出错时，会执行上面指定的默认fallback方法
+在方法上添加@HystrixCommand(fallbackMethod = "get_failBack",commandProperties = {
+            @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds",value = "1500")
+    })当方法调用超时，就会执行get_fallback方法
+    
+#feign服务支持hystrix
+feign:
+  hystrix:
+    enabled: true
+使用feign服务的service，写一个实现类。然后在使用feign服务的service上的@feignclient（name=“服务名称”，fallback=实现类.class）
+上面是服务降级。下面是服务熔断。
+在启动类添加@EnableCircuitBreaker
+     @HystrixCommand(fallbackMethod = "paymentCircuitBreaker_fallback",commandProperties = {
+            @HystrixProperty(name = "circuitBreaker.enabled",value = "true"), //是否开启断路器
+            @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold",value = "10") ,//请求次数
+            @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds",value = "10000") ,//时间窗口
+            @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage",value = "60") //失败率
+    })
+  //10秒内请求次数达到10次，并且失败率超过60%开启断路器
+  断路器是服务降级的一种特殊情况。
+  
+  
+  hystrix图形化监控：dashboard
+          <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-hystrix-dashboard</artifactId>
+        </dependency>
+启动类上添加@EnableHystrixDashboard
 
 
 
