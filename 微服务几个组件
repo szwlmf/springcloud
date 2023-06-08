@@ -161,4 +161,69 @@ public class MyLogGatewayFilter implements GlobalFilter, Ordered {
     }
 }
 
-
+5、配置中心config
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-config-server</artifactId>
+        </dependency>
+yml配置
+spring:
+  application:
+    name: cloud-config-center
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/szwlmf/cloud_config.git
+          search-paths:
+            - cloud_config
+      label: master
+  启动类添加注解@EnableConfigServer
+  上面试configserver
+  
+  下面是configservice
+  <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+  yml配置
+  spring:
+  application:
+    name: config-client
+  cloud:
+    config:
+      label: master
+      name: config
+      profile: dev
+      uri: http://localhost:3344
+ 客户端controller上天加@RefreshScope，动态刷新。手动执行   curl -X POST localhost:3344/    。
+ 
+ 消息总线bus（内含rabbitmq）
+  <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-bus-amqp</artifactId>
+        </dependency>
+ 在config服务端和客户端yml都添加
+ rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+  服务端yml添加
+  #暴露bus舒心配置的端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: 'bus-refresh'
+ 客户端yml添加
+ management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+ 实现配置自动更新
+ 
+ 
+ 6、消息驱动stream
+ 
