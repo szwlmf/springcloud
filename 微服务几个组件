@@ -377,7 +377,14 @@ fi
 
 echo "nacos is starting，you can check the ${BASE_DIR}/logs/start.out"
 
+修改cluster.conf文件  添加要启动的nacos端口：
+111.111.11.1 1111
+111.111.11.1 2222
+111.111.11.1 3333
+111.111.11.1 4444
 
+./startup.sh -pt 1111
+启动端口为1111的nacos服务
 
 
 注册发现
