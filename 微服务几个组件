@@ -226,4 +226,176 @@ management:
  
  
  6、消息驱动stream
+ <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
+    </dependency>
+ 消息生产者yml
+ spring:
+  application:
+    name: cloud-stream-provider
+  cloud:
+    stream:
+      binders: #设置绑定的rabbitmq的服务信息
+        rabbit: #标识定义的名称，用于binding整合
+          type: rabbit
+          environment:
+            spring:
+              rabbitmq:
+                host: localhost
+                port: 5672
+                username: guest
+                passward: guest
+      bindings: #服务的整合处理
+        output: #通道的名称
+          destination: output #标识要是用的exchange 名称
+          content-type: application/json #设置消息类型，文本设置text/plan
+          binder: rabbit #
+          
+ 方法实现
+@EnableBinding(Source.class)
+public class IMessageProviderImpl implements IMessageProvider {
+
+    @Resource
+    private MessageChannel output; //消息发送管道
+
+    @Override
+    public String send() {
+        String id = UUID.randomUUID().toString();
+        output.send(MessageBuilder.withPayload(id).build());
+        System.out.println("***************message:\n"+id);
+        return null;
+    }
+} 
+
+
+
+
+消息消费者：
+yml
+spring:
+  application:
+    name: cloud-stream-consumer
+  cloud:
+    stream:
+      binders: #设置绑定的rabbitmq的服务信息
+        rabbit: #标识定义的名称，用于binding整合
+          type: rabbit
+          environment:
+            spring:
+              rabbitmq:
+                host: localhost
+                port: 5672
+                username: guest
+                passward: guest
+      bindings: #服务的整合处理
+        input: #通道的名称
+          destination: output #标识要是用的exchange 名称
+          content-type: application/json #设置消息类型，文本设置text/plan
+          binder: rabbit #
+          group: A  #用于分组，同一组的应用，只有一个可以消费到消息。不同组的应用可以全部消费
+
+方法实现
+@Component
+@EnableBinding(Sink.class)
+public class ReceiveMessageController {
+
+    @Value(value = "${server.port}")
+    private String serverPort;
+
+    @StreamListener(Sink.INPUT)
+    private void receiveMessage(Message<String> message){
+        System.out.println("消费者2号，接收到消息：\n"+message.getPayload()+",\nport:\n"+serverPort);
+    }
+
+}
+
+
+7、sleuth+zipkin  链路监控
+sleuth 日志链，在入口处生成traceID，每次调用接口，都会讲traceID传递下去。Zipkin是一款开源的分布式实时数据追踪系统
+ZipKin可以分为两部分，一部分是zipkin server，用来作为数据的采集存储、数据分析与展示；zipkin client是zipkin基于不同的语言及框架封装的一些列客户端工具，
+这些工具完成了追踪数据的生成与上报功能
+下载地址：https://search.maven.org/remote_content?g=io.zipkin.java&a=zipkin-server&v=LATEST&c=exec
+运行：java -jar  zipkin-server-2.8.3-exec.jar
+zipkin Server 运行后默认的访问地址：http://localhost:9411
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-zipkin</artifactId>
+        </dependency>
+ yml配置
+ spring:
+  application:
+    name: cloud-order-service
+  zipkin:
+    sender:
+      type: web
+    base-url: http://localhost:9411
+    discoveryClientEnabled: false
+  sleuth:
+    sampler:
+      probability: 1
+
+
+8、nacos（服务注册、发现，服务总线，配置中心）
+下载安装nacos 默认端口8848，
+linux配置集群时
+cp nacos-server-2.2.3\nacos\conf\application.properties
+添加数据库配置，改为外部mysql数据库
+db.num=1
+db.url.0=jdbc:mysql://localhost:3306/nacos_config?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&serverTimezone=Asia/Shanghai
+db.user=root
+db.password=123456
+修改start.sh文件
+添加端口参数
+while getopts ":m:f:s:c:p:pt:" opt
+do
+    case $opt in
+        m)
+            MODE=$OPTARG;;
+        f)
+            FUNCTION_MODE=$OPTARG;;
+        s)
+            SERVER=$OPTARG;;
+        c)
+            MEMBER_LIST=$OPTARG;;
+        p)
+            EMBEDDED_STORAGE=$OPTARG;;
+        pt)
+            PORT=$OPTARG;;
+        ?)
+        echo "Unknown parameter"
+        exit 1;;
+    esac
+done
+
+修改：
+if [[ "$JAVA_OPT_EXT_FIX" == "" ]]; then
+  nohup "$JAVA -Dserver_port =" ${PORT} ${JAVA_OPT} nacos.nacos >> ${BASE_DIR}/logs/start.out 2>&1 &
+else
+  nohup "$JAVA -Dserver_port =" ${PORT} "$JAVA_OPT_EXT_FIX" ${JAVA_OPT} nacos.nacos >> ${BASE_DIR}/logs/start.out 2>&1 &
+fi
+
+echo "nacos is starting，you can check the ${BASE_DIR}/logs/start.out"
+
+
+
+
+注册发现
+<dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        </dependency>
+ yml
  
+
+
+
+
+
+
+
+
+
+
+
+
